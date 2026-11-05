@@ -17,6 +17,7 @@
 
 판정 규칙(결과를 보기 전에 정해 둠): **지지**(알파가 유의한 음수이고 사전 추세로 설명 안 됨) / **기각(월 단위)**(신뢰구간이 0을 포함하고 의미 있는 크기의 음의 효과는 배제) / **판정 불가**(신뢰구간이 너무 넓음).
 자세한 설계는 [docs/design.md](docs/design.md), 발표 자료는 [docs/project_proposal.pptx](docs/project_proposal.pptx) 입니다.
+**팀원은 [CONTRIBUTING.md](CONTRIBUTING.md) 를 먼저 보세요**(시작하는 법, 데이터 공유 방법, 역할 분담, 작업 흐름).
 
 ## 파이프라인
 
