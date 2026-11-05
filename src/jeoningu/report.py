@@ -33,7 +33,12 @@ def _md_table(df: pd.DataFrame, floatfmt: str = "{:.4f}") -> str:
         for c in cols:
             v = r[c]
             if isinstance(v, (float, np.floating)):
-                cells.append("" if pd.isna(v) else floatfmt.format(v))
+                if pd.isna(v):
+                    cells.append("")
+                elif float(v).is_integer() and ("n" in str(c) or "month" in str(c)):
+                    cells.append(str(int(v)))          # 월 수, 관측치 수는 정수로
+                else:
+                    cells.append(floatfmt.format(v))
             else:
                 cells.append(str(v))
         lines.append("| " + " | ".join(cells) + " |")
@@ -68,7 +73,7 @@ def _fig_alpha(alpha: pd.DataFrame, meaningful: float, path: Path) -> None:
     ax.set_yticklabels(alpha["portfolio"].str.replace("−", "-", regex=False))   # 맑은 고딕에 U+2212 글리프가 없음
     ax.set_xlabel("월 알파 (%) 와 95% 신뢰구간")
     ax.set_title("CAPM 알파")
-    ax.legend(loc="lower right", fontsize=8)
+    ax.legend(loc="upper right", fontsize=8)   # 아래쪽 N 그룹 점을 가리지 않게
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
