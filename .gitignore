@@ -1,0 +1,29 @@
+# --- secrets: 절대 커밋하지 않습니다 ---
+.env
+config/local.toml
+api.txt
+*api*key*.txt
+*_API_KEY.txt
+*.key
+
+# --- data: 저작권이 있는 스크립트, 라이선스가 있는 시장 데이터 ---
+data/raw/*
+data/interim/*
+data/processed/*
+data/labels/*
+!data/**/.gitkeep
+
+# --- generated ---
+outputs/
+demo_outputs/
+
+# --- python ---
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/

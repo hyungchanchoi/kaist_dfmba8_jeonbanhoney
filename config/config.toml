@@ -1,0 +1,59 @@
+# 기본 설정. 개인 경로나 비밀 값은 config/local.toml 에 적어서 덮어쓰세요(git 에 올라가지 않음).
+
+[channel]
+id = "UCznImSIaxZR7fdLCICLdgaQ"   # 전인구경제연구소
+name = "전인구경제연구소"
+
+[collect]
+start_date = "2018-09-01"          # 채널 개설 시기
+end_date = "2025-12-31"            # 수업 수익률 데이터(Case 1)의 마지막 달
+max_videos = 0                     # 0 이면 기간 안의 모든 영상
+transcript_languages = ["ko", "en"]
+sleep_seconds = 1.0                # 자막 요청 사이 대기(차단 방지)
+checkpoint_every = 20              # 이 개수마다 CSV 에 이어 쓰기
+max_retries = 3
+
+[paths]
+raw_videos = "data/raw/videos.csv"
+sentences = "data/interim/sentences.csv"
+mentions = "data/interim/mentions.csv"
+scored = "data/processed/mentions_scored.csv"
+llm_cache = "data/interim/llm_cache.jsonl"
+labels = "data/labels/human_labels.csv"
+outputs = "outputs"
+# 수업 Case 1 데이터 위치. config/local.toml 에서 채우세요.
+korea_stocks = ""                  # Korea_Stocks_2000_2025.csv
+ff_korea = ""                      # FF_Factors_Korea.csv
+
+[sample]
+start_month = "2018-10"            # 월 t 의 발언 → 월 t+1 수익률
+end_month = "2025-12"
+exclude_guest = true               # 게스트 대담 영상은 분석에서 제외(별도 비교용으로만 사용)
+
+[mentions]
+top_n_stocks = 300                 # 월별 시가총액 상위 N개에 든 적이 있는 종목만 사전에 포함
+min_name_len = 3                   # 두 글자 이름은 일반 단어와 겹쳐서 제외
+forward_only = true                # 전망 문장만 톤 계산에 사용
+market_keywords = ["코스피", "코스닥", "증시", "주식시장"]
+forward_pattern = "전망|예상|예정|가능성|겁니다|것입니다|것이다|것으로|할 것|될 것|오를|내릴|갈 것|수 있"
+
+[mentions.aliases]
+"삼전" = "삼성전자"
+"하닉" = "SK하이닉스"
+"하이닉스" = "SK하이닉스"
+"현차" = "현대차"
+
+[tone]
+method = "dictionary"              # dictionary | llm
+llm_provider = "anthropic"         # anthropic | openai
+llm_model = ""                     # 사용할 모델 ID 를 직접 적으세요
+llm_batch_size = 20
+
+[analysis]
+group_method = "sign"              # sign: 톤 > 임계값 은 P, < -임계값 은 N / median: 월별 중앙값 기준
+tone_threshold = 0.0
+min_per_group = 1                  # 월별 각 그룹의 최소 종목 수
+hac_lags = 3                       # Newey-West 시차(0 이면 일반 OLS 표준오차)
+meaningful_alpha = 0.02            # '의미 있는 크기'의 월 알파(판정 규칙에 사용)
+min_months = 24                    # 이보다 적으면 결과를 '판정 불가'로 표시
+power_sims = 500

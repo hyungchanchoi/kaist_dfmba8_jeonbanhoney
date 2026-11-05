@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jeoningu-analysis"
+version = "0.1.0"
+description = "전인구경제연구소 유튜브 발언의 톤과 이후 초과수익률 분석 (전반꿀 검증)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+    "requests>=2.31",
+    "youtube-transcript-api>=1.0",
+]
+
+[project.optional-dependencies]
+# LLM 채점(주 방법)과 번역에 사용
+llm = ["anthropic>=0.40", "openai>=1.40"]
+# 번역본에 VADER, FinBERT를 적용하는 교차 검증용
+nlp = ["nltk>=3.8", "transformers>=4.40", "torch>=2.2"]
+dev = ["pytest>=8", "statsmodels>=0.14"]
+
+[project.scripts]
+jeoningu = "jeoningu.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
