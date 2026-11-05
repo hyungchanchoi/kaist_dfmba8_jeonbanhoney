@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jeoningu-analysis"
+name = "kaist_dfmba8_jeonbanhoney"
 version = "0.1.0"
 description = "전인구경제연구소 유튜브 발언의 톤과 이후 초과수익률 분석 (전반꿀 검증)"
 readme = "README.md"

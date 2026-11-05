@@ -1,4 +1,4 @@
-# jeoningu-analysis
+# kaist_dfmba8_jeonbanhoney
 
 전인구경제연구소 유튜브 발언의 **톤**이 이후 **초과수익률**과 어떤 관계인지 검증하는 프로젝트입니다.
 이른바 '전반꿀'("전인구 반대로 하면 꿀") 밈이 데이터로 맞는지 보는 KAIST BAF.50022 Financial Data Analytics 기말 프로젝트입니다.
@@ -40,7 +40,7 @@ collect ──► preprocess ──► mentions ──► tone ──► analyze
 
 ```bash
 git clone <이 저장소 주소>
-cd jeoningu-analysis
+cd kaist_dfmba8_jeonbanhoney
 python -m venv .venv && source .venv/bin/activate     # 윈도우: .venv\Scripts\activate
 pip install -e ".[dev]"                                # LLM 채점까지 쓰려면 ".[dev,llm]"
 ```
