@@ -15,6 +15,7 @@ dependencies = [
     "matplotlib>=3.8",
     "requests>=2.31",
     "youtube-transcript-api>=1.0",
+    "yfinance>=0.2.50",
 ]
 
 [project.optional-dependencies]

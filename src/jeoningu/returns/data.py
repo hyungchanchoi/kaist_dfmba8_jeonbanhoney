@@ -56,7 +56,12 @@ def download_daily(tickers: list[str], start: str, end: str, fetch: FetchFn | No
                    sleep_seconds: float = 0.3, retries: int = 2,
                    log: Callable[[str], None] = print) -> tuple[dict[str, pd.DataFrame], list[str]]:
     """종목별 일별 가격을 받습니다. 반환: ({티커: 일별 표}, 실패한 티커 목록)."""
-    fetch = fetch or yahoo_fetch
+    if fetch is None:
+        try:
+            import yfinance  # noqa: F401  (없으면 종목마다 조용히 실패하지 않도록 미리 확인)
+        except ImportError as exc:
+            raise RuntimeError("yfinance 가 설치되어 있지 않습니다. pip install yfinance (또는 pip install -e .)") from exc
+        fetch = yahoo_fetch
     out: dict[str, pd.DataFrame] = {}
     failed: list[str] = []
     for i, t in enumerate(tickers, start=1):
