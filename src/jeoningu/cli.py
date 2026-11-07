@@ -1,6 +1,6 @@
 """명령줄 진입점.  python -m jeoningu <명령>   (또는 pip install -e . 후 jeoningu <명령>)
 
-단계:  collect → preprocess → mentions → tone → analyze → report   (한 번에: all)
+단계:  collect, prices(Yahoo 수익률) → preprocess → mentions → tone → analyze → report   (한 번에: all)
 점검:  demo (합성 데이터), label-sample / validate (사람 라벨 검증)
 """
 from __future__ import annotations
@@ -53,20 +53,51 @@ def cmd_preprocess(cfg: Config, args) -> None:
     _write(sentences, cfg.path("sentences"))
 
 
-def _load_stocks(cfg: Config):
-    from .returns.data import load_korea_stocks
-
-    return load_korea_stocks(cfg.path("korea_stocks"))
-
-
 def cmd_mentions(cfg: Config, args) -> None:
-    from .text.clean import build_sentence_table  # noqa: F401 (명시적으로 의존 단계 표시)
     from .pipeline import make_mentions
+    from .returns.data import load_universe
 
     videos = _load_videos(cfg, args.videos)
-    mentions = make_mentions(videos, _load_stocks(cfg), cfg)
+    universe = load_universe(cfg.path("universe"))
+    print(f"종목 사전: {len(universe)}개 종목 ({cfg.path('universe')})")
+    mentions = make_mentions(videos, universe, cfg)
     print(mentions.groupby(["target_type", mentions["guest"]]).size().to_string())
     _write(mentions, cfg.path("mentions"))
+
+
+def cmd_prices(cfg: Config, args) -> None:
+    """Yahoo Finance 에서 종목과 코스피 지수의 일별 가격을 받아 월 수익률 CSV 로 저장합니다."""
+    from .months import month_str_to_ym
+    from .returns.data import (build_returns_table, date_window, download_daily, load_universe,
+                               save_csv, to_monthly)
+
+    universe = load_universe(cfg.path("universe"))
+    rcfg = cfg["returns"]
+    start, end = date_window(month_str_to_ym(cfg["sample"]["start_month"]),
+                             month_str_to_ym(cfg["sample"]["end_month"]))
+    tickers = universe["code"].tolist()
+    if args.max_tickers:
+        tickers = tickers[:args.max_tickers]
+    market = rcfg["market_ticker"]
+    print(f"다운로드: 종목 {len(tickers)}개 + 시장({market}), 기간 {start} ~ {end}")
+    daily, failed = download_daily(tickers + [market], start, end,
+                                   sleep_seconds=float(rcfg["sleep_seconds"]),
+                                   retries=int(rcfg["max_retries"]))
+    if market not in daily:
+        raise RuntimeError(f"시장 지수({market}) 를 받지 못했습니다. 잠시 후 다시 시도하세요.")
+    market_df = to_monthly(daily.pop(market))
+    returns = build_returns_table(daily)
+    _write(returns, cfg.path("returns_monthly"))
+    _write(market_df[["ym", "ret"]], cfg.path("market_monthly"))
+    ok = returns["code"].nunique() if len(returns) else 0
+    print(f"성공 {ok}개, 실패 {len(failed)}개" + (f": {', '.join(failed)}" if failed else ""))
+    # 액면분할·분할상장 등을 Yahoo 가 제대로 반영하지 않으면 월 수익률이 비정상적으로 크게 나옵니다.
+    odd = returns[returns["ret"].abs() > 0.4]
+    if len(odd):
+        print(f"주의: 월 수익률 절댓값이 40% 를 넘는 달 {len(odd)}개(액면분할·분할 미반영 가능성). 확인하세요:")
+        print(odd.head(10)[["code", "ym", "ret"]].to_string(index=False))
+    if not cfg.has_path("rf_monthly"):
+        print(f"무위험수익률 파일이 없어서 연 {rcfg['rf_annual']:.2%} 상수를 씁니다(config 의 returns.rf_annual).")
 
 
 def cmd_tone(cfg: Config, args) -> None:
@@ -78,11 +109,9 @@ def cmd_tone(cfg: Config, args) -> None:
 
 
 def _load_returns(cfg: Config):
-    from .returns.data import build_panel, load_ff_korea, load_korea_stocks
+    from .returns.data import load_panel
 
-    stocks = load_korea_stocks(cfg.path("korea_stocks"))
-    ff = load_ff_korea(cfg.path("ff_korea"))
-    return build_panel(stocks, ff), ff
+    return load_panel(cfg)
 
 
 def cmd_analyze(cfg: Config, args):
@@ -153,8 +182,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-videos", type=int, help="시험용으로 개수 제한")
     s.set_defaults(fn=cmd_collect)
 
+    s = sub.add_parser("prices", help="Yahoo Finance 에서 월 수익률 받기(config/universe.csv 의 종목, 네트워크 필요)")
+    s.add_argument("--max-tickers", type=int, help="시험용으로 종목 수 제한")
+    s.set_defaults(fn=cmd_prices)
+
     for name, fn, h in [("preprocess", cmd_preprocess, "자막 정리와 문장 분리"),
-                        ("mentions", cmd_mentions, "종목·시장 언급 문장 추출(수업 Case 1 종목명 필요)"),
+                        ("mentions", cmd_mentions, "종목·시장 언급 문장 추출(config/universe.csv 의 종목명 사용)"),
                         ("all", cmd_all, "preprocess → mentions → tone → analyze")]:
         s = sub.add_parser(name, help=h)
         s.add_argument("--videos", help="수집 결과 CSV(기본: paths.raw_videos)")
@@ -165,7 +198,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--method", choices=["dictionary", "llm"], help="기본: config tone.method")
     s.set_defaults(fn=cmd_tone)
 
-    s = sub.add_parser("analyze", help="H1·H2 분석과 보고서 생성(수업 Case 1 수익률 필요)")
+    s = sub.add_parser("analyze", help="H1·H2 분석과 보고서 생성(prices 로 받은 수익률 필요)")
     s.add_argument("--method", choices=["dictionary", "llm"])
     s.set_defaults(fn=cmd_analyze)
 

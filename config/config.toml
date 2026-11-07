@@ -6,7 +6,7 @@ name = "전인구경제연구소"
 
 [collect]
 start_date = "2018-09-01"          # 채널 개설 시기
-end_date = "2025-12-31"            # 수업 수익률 데이터(Case 1)의 마지막 달
+end_date = "2025-12-31"            # 분석 표본의 마지막 달(sample.end_month 와 맞춤)
 max_videos = 0                     # 0 이면 기간 안의 모든 영상
 transcript_languages = ["ko", "en"]
 sleep_seconds = 1.0                # 자막 요청 사이 대기(차단 방지)
@@ -21,9 +21,16 @@ scored = "data/processed/mentions_scored.csv"
 llm_cache = "data/interim/llm_cache.jsonl"
 labels = "data/labels/human_labels.csv"
 outputs = "outputs"
-# 수업 Case 1 데이터 위치. config/local.toml 에서 채우세요.
-korea_stocks = ""                  # Korea_Stocks_2000_2025.csv
-ff_korea = ""                      # FF_Factors_Korea.csv
+universe = "config/universe.csv"           # 분석 대상 종목(Yahoo 티커, 종목명, 별칭). git 에 포함, PR 로 함께 늘림
+returns_monthly = "data/raw/returns_monthly.csv"   # prices 명령이 만듦(종목별 월 수익률)
+market_monthly = "data/raw/market_monthly.csv"     # prices 명령이 만듦(코스피 지수 월 수익률)
+rf_monthly = ""                    # 선택: 월별 무위험수익률 CSV(열: ym, rf). 비우면 returns.rf_annual 상수 사용
+
+[returns]
+market_ticker = "^KS11"            # 시장 대용: 코스피 지수(배당이 빠진 가격 지수)
+rf_annual = 0.0                    # 연 무위험수익률(소수). 한국 단기금리로 바꾸세요. H-L 알파에는 거의 영향 없음
+sleep_seconds = 0.3                # 종목 사이 대기(요청 제한 방지)
+max_retries = 2
 
 [sample]
 start_month = "2018-10"            # 월 t 의 발언 → 월 t+1 수익률
@@ -31,8 +38,7 @@ end_month = "2025-12"
 exclude_guest = true               # 게스트 대담 영상은 분석에서 제외(별도 비교용으로만 사용)
 
 [mentions]
-top_n_stocks = 300                 # 월별 시가총액 상위 N개에 든 적이 있는 종목만 사전에 포함
-min_name_len = 3                   # 두 글자 이름은 일반 단어와 겹쳐서 제외
+min_name_len = 3                   # 두 글자 종목명은 일반 단어와 겹쳐서 제외(별칭은 길이 제한 없음)
 forward_only = true                # 전망 문장만 톤 계산에 사용
 market_keywords = ["코스피", "코스닥", "증시", "주식시장"]
 forward_pattern = "전망|예상|예정|가능성|겁니다|것입니다|것이다|것으로|할 것|될 것|오를|내릴|갈 것|수 있"

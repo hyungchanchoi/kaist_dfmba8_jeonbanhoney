@@ -4,20 +4,18 @@ from __future__ import annotations
 import pandas as pd
 
 from .config import Config
-from .months import month_str_to_ym
 from .text.clean import build_sentence_table
 from .text.mentions import build_stock_dictionary, extract_mentions
 from .text.tone import LLMScorer, make_complete_fn, score_mentions
 
 
-def make_mentions(videos: pd.DataFrame, stocks: pd.DataFrame, cfg: Config | dict) -> pd.DataFrame:
-    """수집한 영상 표 → 문장 표 → 종목·시장 언급 표."""
+def make_mentions(videos: pd.DataFrame, universe: pd.DataFrame, cfg: Config | dict) -> pd.DataFrame:
+    """수집한 영상 표 → 문장 표 → 종목·시장 언급 표. universe 는 config/universe.csv 를 읽은 표."""
     data = cfg.data if isinstance(cfg, Config) else cfg
-    mcfg, scfg = data["mentions"], data["sample"]
+    mcfg = data["mentions"]
     sentences = build_sentence_table(videos)
-    dictionary = build_stock_dictionary(
-        stocks, month_str_to_ym(scfg["start_month"]), month_str_to_ym(scfg["end_month"]),
-        top_n=mcfg["top_n_stocks"], min_name_len=mcfg["min_name_len"], aliases=mcfg.get("aliases", {}))
+    dictionary = build_stock_dictionary(universe, min_name_len=mcfg["min_name_len"],
+                                        aliases=mcfg.get("aliases", {}))
     return extract_mentions(sentences, dictionary, mcfg["market_keywords"], mcfg["forward_pattern"])
 
 

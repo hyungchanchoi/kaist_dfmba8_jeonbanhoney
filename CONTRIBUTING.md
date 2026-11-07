@@ -21,17 +21,19 @@ python -m jeoningu demo            # 합성 데이터로 전체 파이프라인�
 | 데이터 | 이유 | 공유 방법 |
 |---|---|---|
 | 유튜브 스크립트 (`data/raw/`) | 영상 자막이라 저작권이 있음 | 한 명이 `collect` 로 수집한 뒤 팀 드라이브로 CSV 를 공유 |
-| 수업 Case 1 데이터 (주가, FF 팩터) | 수업 자료(라이선스) | 각자 수업에서 받은 파일을 쓰고, `config/local.toml` 에 경로를 적음 |
+| 수익률 (`data/raw/returns_monthly.csv`, `market_monthly.csv`) | Yahoo Finance 데이터라 재배포하지 않음 | 각자 `python -m jeoningu prices` 로 받음. 결과를 공유할 때는 받은 날짜를 적기 |
 | API 키 | 비밀 값 | 각자 발급하거나 환경변수로만 사용. 파일로 저장했다면 `.gitignore` 에 걸리는지 확인 |
 
 `.gitignore` 가 `data/`, `outputs/`, `config/local.toml`, 키 파일을 막아 둡니다. 그래도 커밋 전에 `git status` 로 올라갈 파일을 한 번 확인하세요.
 
-`config/local.toml` 예시:
+**분석 종목 목록 `config/universe.csv` 는 git 에 포함**되어 팀이 함께 관리합니다(티커와 종목명은 공개 정보). 영상에 자주 나오는데 빠진 종목은 PR 로 추가하세요.
+`코스피=.KS`, `코스닥=.KQ` 이고, 추가한 티커는 `python -m jeoningu prices --max-tickers 5` 처럼 받아 보고 값이 나오는지 확인한 뒤 올리세요.
+
+무위험수익률 월별 CSV(열 `ym`, `rf`)가 있으면 `config/local.toml` 에 경로를 적습니다(없으면 `returns.rf_annual` 상수를 씀).
 
 ```toml
 [paths]
-korea_stocks = "/내/경로/Korea_Stocks_2000_2025.csv"
-ff_korea     = "/내/경로/FF_Factors_Korea.csv"
+rf_monthly = "/내/경로/rf_monthly.csv"
 ```
 
 ## 3. 역할 분담 제안

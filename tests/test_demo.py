@@ -39,6 +39,7 @@ def test_guest_videos_are_excluded(cfg):
 
 
 def test_synthetic_data_covers_sample_with_margin(cfg):
-    videos, stocks, ff, truth = make_synthetic(planted_alpha=-0.05, seed=5)
-    assert len(videos) > 0
-    assert stocks["ym"].min() < 201810 and stocks["ym"].max() > 202512   # 앞뒤 한 달씩 여유
+    videos, universe, panel, ff, truth = make_synthetic(planted_alpha=-0.05, seed=5)
+    assert len(videos) > 0 and len(universe) == 60
+    assert panel["ym"].min() < 201810 and panel["ym"].max() > 202512   # 앞뒤 한 달씩 여유
+    assert set(panel.columns) >= {"code", "name", "ym", "ex", "size"}

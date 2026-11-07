@@ -49,24 +49,30 @@ def test_kst_month_boundary():
 
 
 # ---------------------------------------------------------------- mentions
-def _stocks():
-    rows = []
-    for ym in (201810, 201811):
-        for code, name, mcap in [("A1", "삼성전자", 5e14), ("A2", "SK하이닉스", 3e14), ("A3", "대상", 1e12),
-                                 ("A4", "알테오젠", 2e12)]:
-            rows.append({"code": code, "name": name, "ym": ym, "mcap": mcap})
-    return pd.DataFrame(rows)
+def _universe():
+    return pd.DataFrame([
+        {"code": "005930.KS", "name": "삼성전자", "aliases": "삼전"},
+        {"code": "000660.KS", "name": "SK하이닉스", "aliases": ""},
+        {"code": "A3", "name": "대상", "aliases": ""},
+        {"code": "196170.KQ", "name": "알테오젠", "aliases": ""},
+    ])
 
 
 def test_dictionary_excludes_short_names_and_adds_alias():
-    d = build_stock_dictionary(_stocks(), 201810, 201811, top_n=10, min_name_len=3,
-                               aliases={"하이닉스": "SK하이닉스", "삼전": "삼성전자"})
+    d = build_stock_dictionary(_universe(), min_name_len=3, aliases={"하이닉스": "SK하이닉스"})
     assert "대상" not in d                       # 두 글자 일반 단어와 겹치는 이름 제외
-    assert d["삼전"][0] == "A1" and d["하이닉스"][0] == "A2"
+    assert d["삼전"][0] == "005930.KS"           # 별칭은 두 글자여도 허용(universe 의 aliases 열)
+    assert d["하이닉스"][0] == "000660.KS"       # 설정의 별칭
+    assert d["SK하이닉스"] == ("000660.KS", "SK하이닉스")
+
+
+def test_alias_for_unknown_stock_is_ignored():
+    d = build_stock_dictionary(_universe(), aliases={"테슬라": "Tesla"})
+    assert "테슬라" not in d
 
 
 def test_longest_name_wins_and_prefix_guard():
-    d = build_stock_dictionary(_stocks(), 201810, 201811, top_n=10, aliases={"하이닉스": "SK하이닉스"})
+    d = build_stock_dictionary(_universe(), aliases={"하이닉스": "SK하이닉스"})
     rx = compile_stock_regex(d)
     assert rx.search("SK하이닉스가 오를 겁니다").group(0) == "SK하이닉스"
     assert rx.search("삼성전자는 좋습니다").group(0) == "삼성전자"
@@ -74,7 +80,7 @@ def test_longest_name_wins_and_prefix_guard():
 
 
 def test_extract_mentions_market_and_forward():
-    d = build_stock_dictionary(_stocks(), 201810, 201811, top_n=10)
+    d = build_stock_dictionary(_universe())
     sent = pd.DataFrame([
         {"video_id": "v1", "month_kst": "2018-10", "guest": False, "sent_idx": 0,
          "sentence": "삼성전자는 앞으로 오를 것입니다."},
@@ -83,7 +89,7 @@ def test_extract_mentions_market_and_forward():
     ])
     m = extract_mentions(sent, d, ["코스피", "증시"], "것입니다|전망")
     by = {(r.target_type, r.target): r.is_forward for r in m.itertuples()}
-    assert by[("stock", "A1")] is True or by[("stock", "A1")] == True  # noqa: E712
+    assert by[("stock", "005930.KS")] == True  # noqa: E712
     assert by[("market", "KOSPI")] == False                            # noqa: E712 (설명 문장)
 
 
@@ -175,7 +181,7 @@ def _panel_and_ff(n_months=60, seed=0):
     for m in months:
         for i in range(10):
             rows.append({"code": f"C{i}", "name": f"종목{i}", "ym": m, "ex": rng.normal(0.0, 0.05),
-                         "mcap": 1e12})
+                         "size": 1e12})
     return pd.DataFrame(rows), ff
 
 
@@ -214,7 +220,7 @@ def test_alpha_detects_planted_effect():
         mk = ff.set_index("ym").loc[m, "mkt_rf"]
         for i in range(8):
             sign = 1 if i < 4 else -1
-            rows.append({"code": f"C{i}", "name": f"s{i}", "ym": m, "mcap": 1.0,
+            rows.append({"code": f"C{i}", "name": f"s{i}", "ym": m, "size": 1.0,
                          "ex": mk + rng.normal(0, 0.03) - 0.01 * sign})   # 긍정 종목이 월 1% 덜 오름
     pr = portfolio_returns(assign_groups(pd.DataFrame(tone_rows)), pd.DataFrame(rows), ff)
     res = alpha_tests(pr, hac_lags=3).iloc[0]

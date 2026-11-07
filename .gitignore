@@ -6,7 +6,7 @@ api.txt
 *_API_KEY.txt
 *.key
 
-# --- data: 저작권이 있는 스크립트, 라이선스가 있는 시장 데이터 ---
+# --- data: 저작권이 있는 스크립트, 재배포하지 않는 Yahoo 수익률 ---
 data/raw/*
 data/interim/*
 data/processed/*

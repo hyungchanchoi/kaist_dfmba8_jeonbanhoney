@@ -1,7 +1,8 @@
 """종목·시장 언급 문장 추출 (수업 Case 3: 키워드가 든 문장을 regex 로 뽑아 표로 만들기).
 
-종목 사전은 수업 Case 1 의 종목명(Korea_Stocks_2000_2025.csv)에서 만듭니다. 그래서 언급된 종목이
-곧바로 주가 데이터와 연결됩니다. 두 글자 이름은 일반 단어와 겹쳐 오탐이 많아서 제외하고(min_name_len),
+종목 사전은 config/universe.csv(Yahoo 티커, 종목명, 별칭)에서 만듭니다. 그래서 언급된 종목이
+곧바로 Yahoo Finance 수익률과 연결됩니다. 이 파일에 없는 종목은 분석에서 빠지므로 영상에 자주 나오는
+종목을 PR 로 추가하세요. 두 글자 종목명은 일반 단어와 겹쳐 오탐이 많아서 제외하고(min_name_len),
 긴 이름부터 먼저 맞춥니다("SK하이닉스"가 "하이닉스"보다 우선).
 """
 from __future__ import annotations
@@ -16,27 +17,28 @@ MARKET_TARGET = "KOSPI"
 HANGUL_OR_ALNUM = "가-힣A-Za-z0-9"
 
 
-def build_stock_dictionary(stocks: pd.DataFrame, start_ym: int, end_ym: int, top_n: int = 300,
-                           min_name_len: int = 3, aliases: dict[str, str] | None = None
-                           ) -> dict[str, tuple[str, str]]:
-    """{표면형 이름: (종목코드, 대표 종목명)} 사전을 만듭니다.
+def build_stock_dictionary(universe: pd.DataFrame, min_name_len: int = 3,
+                           aliases: dict[str, str] | None = None) -> dict[str, tuple[str, str]]:
+    """{표면형 이름: (Yahoo 티커, 대표 종목명)} 사전을 만듭니다.
 
-    표본 기간의 어느 달이든 시가총액 상위 top_n 에 든 적이 있는 종목을 모두 포함합니다.
-    (예전에 크게 언급되다 상장폐지된 종목이 빠지는 생존 편향을 줄이기 위함)
+    universe 는 config/universe.csv 를 읽은 표(code, name, aliases)입니다.
+    - 대표 종목명은 min_name_len 글자 이상일 때만 넣습니다(두 글자 이름은 일반 단어와 겹침).
+    - 별칭(universe 의 aliases 열 + 설정의 [mentions.aliases])은 길이 제한 없이 넣습니다.
+      별칭은 사람이 의도해서 적는 것이므로 오탐 위험을 감수합니다.
     """
-    s = stocks[(stocks["ym"] >= start_ym) & (stocks["ym"] <= end_ym)].copy()
-    s["rank"] = s.groupby("ym")["mcap"].rank(ascending=False, method="first")
-    top = s[s["rank"] <= top_n].sort_values("ym")
-    # 같은 이름이 여러 코드에 쓰였으면 가장 최근 코드를 씁니다.
-    latest = top.drop_duplicates(subset=["name"], keep="last")
     out: dict[str, tuple[str, str]] = {}
-    for r in latest.itertuples(index=False):
-        name = str(r.name)
-        if len(name) >= min_name_len:
-            out[name] = (r.code, name)
+    by_name: dict[str, tuple[str, str]] = {}
+    for r in universe.itertuples(index=False):
+        entry = (r.code, r.name)
+        by_name[r.name] = entry
+        if len(r.name) >= min_name_len:
+            out[r.name] = entry
+        alias_col = getattr(r, "aliases", "") or ""
+        for alias in [a.strip() for a in alias_col.split(";") if a.strip()]:
+            out[alias] = entry
     for alias, canonical in (aliases or {}).items():
-        if canonical in out:
-            out[alias] = out[canonical]
+        if canonical in by_name:
+            out[alias] = by_name[canonical]
     return out
 
 

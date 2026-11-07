@@ -25,7 +25,7 @@ SUFFIX = ["전자", "화학", "바이오", "에너지", "건설", "제약"]
 def make_synthetic(planted_alpha: float = 0.0, planted_market: float = 0.0, n_stocks: int = 60,
                    start_month: str = "2018-10", end_month: str = "2025-12", seed: int = 0,
                    mention_prob: float = 0.15):
-    """(videos, stocks, ff, truth) 를 돌려줍니다. truth 는 심어 둔 월별 종목 톤 부호입니다."""
+    """(videos, universe, panel, ff, truth) 를 돌려줍니다. truth 는 심어 둔 월별 종목 톤 부호입니다."""
     rng = np.random.default_rng(seed)
     names = [p + s for p in PREFIX for s in SUFFIX][:n_stocks]
     s_ym, e_ym = month_str_to_ym(start_month), month_str_to_ym(end_month)
@@ -41,8 +41,7 @@ def make_synthetic(planted_alpha: float = 0.0, planted_market: float = 0.0, n_st
                 stock_sign[(m, i)] = int(rng.choice([-1, 1]))
 
     # 팩터와 수익률
-    ff = pd.DataFrame({"ym": months, "mkt_rf": rng.normal(0.006, 0.05, len(months)), "smb": 0.0, "hml": 0.0,
-                       "rf": 0.002})
+    ff = pd.DataFrame({"ym": months, "mkt_rf": rng.normal(0.006, 0.05, len(months)), "rf": 0.002})
     ff_idx = ff.set_index("ym")
     for m in sample_months:
         ff_idx.loc[ym_add(m, 1), "mkt_rf"] += planted_market * market_sign[m]
@@ -56,9 +55,9 @@ def make_synthetic(planted_alpha: float = 0.0, planted_market: float = 0.0, n_st
             # 긍정(+1) 종목은 +α/2, 부정(−1) 종목은 −α/2 → H−L(P−N) 평균이 정확히 α
             effect = 0.5 * planted_alpha * stock_sign.get((prev, i), 0)
             ex = betas[i] * mkt + rng.normal(0, 0.08) + effect
-            rows.append({"code": f"A{i:06d}", "mkt": "KS", "name": name, "ym": m,
-                         "price": 10000.0, "ret_div": ex + 0.002, "mcap": 1e12 * (n_stocks - i)})
-    stocks = pd.DataFrame(rows)
+            rows.append({"code": f"A{i:06d}", "name": name, "ym": m, "ex": ex, "size": float(n_stocks - i)})
+    panel = pd.DataFrame(rows)
+    universe = pd.DataFrame({"code": [f"A{i:06d}" for i in range(n_stocks)], "name": names, "aliases": ""})
 
     # 가짜 스크립트
     def stock_sentence(name: str, sign: int) -> str:
@@ -89,21 +88,18 @@ def make_synthetic(planted_alpha: float = 0.0, planted_market: float = 0.0, n_st
     for c in ["channel_title", "description", "duration", "url"]:
         videos[c] = ""
     truth = pd.DataFrame([{"ym": m, "idx": i, "sign": s} for (m, i), s in stock_sign.items()])
-    return videos, stocks, ff, truth
+    return videos, universe, panel, ff, truth
 
 
 def run_demo(out_dir: str | Path = "demo_outputs", planted_alpha: float = 0.0, planted_market: float = 0.0,
              seed: int = 0, cfg: Config | None = None, write: bool = True) -> AnalysisResults:
     cfg = cfg or load_config()
     data = cfg.data
-    videos, stocks, ff, _ = make_synthetic(planted_alpha, planted_market, seed=seed,
-                                           start_month=data["sample"]["start_month"],
-                                           end_month=data["sample"]["end_month"])
-    mentions = make_mentions(videos, stocks, data)
+    videos, universe, panel, ff, _ = make_synthetic(planted_alpha, planted_market, seed=seed,
+                                                    start_month=data["sample"]["start_month"],
+                                                    end_month=data["sample"]["end_month"])
+    mentions = make_mentions(videos, universe, data)
     scored = score(mentions, data, method="dictionary")
-    from .returns.data import build_panel
-
-    panel = build_panel(stocks, ff)
     res = run_analysis(scored, panel, ff, sample_cfg=data["sample"], tone_method="dictionary",
                        mentions_cfg=data["mentions"], analysis_cfg={**data["analysis"], "power_sims": 100})
     if write:

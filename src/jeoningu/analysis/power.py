@@ -16,8 +16,10 @@ def alpha_detectability(panel: pd.DataFrame, ff: pd.DataFrame, months: list[int]
     """months 는 수익률을 보는 달(YYYYMM) 목록. 반환: 중앙값 표준오차와 구분 가능한 알파(5%, 80% 검정력)."""
     rng = np.random.default_rng(seed)
     p = panel[panel["ym"].isin(months)].dropna(subset=["ex"]).copy()
-    p["rank"] = p.groupby("ym")["mcap"].rank(ascending=False, method="first")
-    p = p[p["rank"] <= top_n]
+    # size(월 거래대금 등 크기 대용)가 있으면 상위 top_n 만, 없으면 전체 종목을 씁니다.
+    if "size" in p and p["size"].notna().any():
+        p["rank"] = p.groupby("ym")["size"].rank(ascending=False, method="first")
+        p = p[p["rank"] <= top_n]
     by_month = {ym: g["ex"].to_numpy() for ym, g in p.groupby("ym")}
     mk = ff.set_index("ym")["mkt_rf"]
     usable = [m for m in months if m in by_month and len(by_month[m]) >= 2 * k and m in mk.index]
